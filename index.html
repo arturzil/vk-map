@@ -58,32 +58,50 @@
       border: 1px solid #EBEDF0; background: #F9FAFB; position: relative;
       -webkit-overflow-scrolling: touch;
     }
-    /* На мобильных карта сохраняет читаемую ширину и плавно скроллится по горизонтали */
     .svg-viewport svg { width: 100%; min-width: 780px; height: auto; display: block; }
 
-    /* Интерактивные стили для зданий z1..z6 внутри karta.svg */
+    /* Пульсация и перелив для зданий */
+    @keyframes buildingPulse {
+      0% {
+        filter: drop-shadow(0 0 2px rgba(0, 119, 255, 0.3));
+        opacity: 0.9;
+      }
+      50% {
+        filter: drop-shadow(0 0 10px rgba(0, 119, 255, 0.9));
+        opacity: 1;
+      }
+      100% {
+        filter: drop-shadow(0 0 2px rgba(0, 119, 255, 0.3));
+        opacity: 0.9;
+      }
+    }
+
     .building-zone {
       cursor: pointer;
-      transition: opacity 0.2s ease, filter 0.2s ease;
+      animation: buildingPulse 2.5s infinite ease-in-out;
+      transition: transform 0.2s ease, filter 0.2s ease;
+      transform-box: fill-box;
+      transform-origin: center;
     }
     .building-zone:hover {
-      opacity: 0.82;
-      filter: drop-shadow(0 0 6px rgba(0, 119, 255, 0.55));
+      animation: none;
+      opacity: 1;
+      filter: drop-shadow(0 0 12px rgba(0, 119, 255, 1));
+      transform: scale(1.02);
     }
     .building-zone.highlighted {
       stroke: var(--accent-blue) !important;
       stroke-width: 4px !important;
-      filter: drop-shadow(0 0 10px rgba(0, 119, 255, 0.8));
     }
 
     /* Автоматические таблички с адресами поверх SVG */
-    .svg-badge-bg { fill: #FFFFFF; stroke: #DCE1E6; stroke-width: 1.5; pointer-events: none; }
+    .svg-badge-bg { fill: rgba(255, 255, 255, 0.95); stroke: #DCE1E6; stroke-width: 1; pointer-events: none; }
     .svg-badge-text {
-      font-size: 14px; font-weight: 700; fill: #1C1D1F;
+      font-size: 11px; font-weight: 700; fill: #1C1D1F;
       text-anchor: middle; dominant-baseline: central; pointer-events: none;
     }
 
-    /* Быстрые кнопки зданий под картой (удобно для телефона) */
+    /* Быстрые кнопки зданий под картой */
     .buildings-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
     .b-chip {
       padding: 8px 14px; border-radius: 10px; border: 1px solid var(--border-light);
@@ -92,7 +110,7 @@
     }
     .b-chip:hover { border-color: var(--accent-blue); color: var(--accent-blue); background: #F5F9FF; }
 
-    /* Модальное окно / экран выбранного здания (заглушка под ваши будущие SVG этажей) */
+    /* Модальное окно / экран выбранного здания */
     .building-modal {
       display: none; background: var(--bg-card); padding: 20px; border-radius: 16px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.08); border: 1px solid var(--border-light);
@@ -136,23 +154,21 @@
     </div>
   </div>
 
-  <!-- Экран 1: Общая карта бульвара (karta.svg) -->
+  <!-- Экран 1: Общая карта бульвара -->
   <div id="boulevardView" class="map-card">
     <div class="map-hint">
       <span>Нажмите на здание, чтобы открыть схему помещений</span>
       <span>↔ Прокрутите карту</span>
     </div>
 
-    <!-- Сюда скрипт автоматически подгрузит ваш файл karta.svg -->
     <div id="svgContainer" class="svg-viewport">
       <div style="padding: 40px; text-align: center; color: #818C99;">Загрузка карты бульвара...</div>
     </div>
 
-    <!-- Дублирующие кнопки зданий для быстрого перехода с мобильного -->
     <div id="buildingsBar" class="buildings-bar"></div>
   </div>
 
-  <!-- Экран 2: Внутренняя схема выбранного здания (открывается при клике на z1..z6) -->
+  <!-- Экран 2: Схема выбранного здания -->
   <div id="buildingView" class="building-modal">
     <div class="modal-header">
       <div>
@@ -164,7 +180,6 @@
 
     <div id="floorTabs" class="floor-tabs"></div>
 
-    <!-- Место для будущих SVG-схем этажей (например, z1-floor1.svg) -->
     <div id="buildingPlanPlaceholder" style="padding: 24px; border: 1.5px dashed #DCE1E6; border-radius: 12px; text-align: center; color: #818C99; margin-bottom: 16px;">
       Здесь отобразится SVG-схема выбранного этажа
     </div>
@@ -174,14 +189,12 @@
 </div>
 
 <script>
-  // 1. БАЗА ЗДАНИЙ (привязка ID из karta.svg к адресам, этажам и арендаторам)
-  // Проверьте соответствие z1..z6 вашим объектам в CorelDRAW
   const buildingsData = {
     "z1": {
       title: "Мира, 31Б",
       shortLabel: "Мира 31Б",
-      floors: ["0", "1", "2", "3"],
-      svgFiles: { "0": "mira31b-0.svg", "1": "mira31b-1.svg", "2": "mira31b-2.svg", "3": "mira31b-3.svg" },
+      floors: ["1", "2", "3"],
+      svgFiles: { "1": "mira31b-1.svg", "2": "mira31b-2.svg", "3": "mira31b-3.svg" },
       tenants: [
         { room: "office-1", floor: "1", name: "Супермаркет", category: "Продукты" },
         { room: "office-2", floor: "2", name: "Юридический центр", category: "Услуги" }
@@ -235,7 +248,6 @@
     }
   };
 
-  // 2. ЗАГРУЗКА И ИНИЦИАЛИЗАЦИЯ karta.svg
   async function loadBoulevardMap() {
     const container = document.getElementById('svgContainer');
     try {
@@ -247,7 +259,6 @@
       const svgEl = container.querySelector('svg');
       if (!svgEl) return;
 
-      // Привязываем клики и автоматически ставим плашки с адресами по центру каждого z1..z6
       Object.entries(buildingsData).forEach(([id, info]) => {
         const buildingShape = svgEl.getElementById(id);
         if (!buildingShape) {
@@ -258,24 +269,22 @@
         buildingShape.classList.add('building-zone');
         buildingShape.addEventListener('click', () => openBuilding(id));
 
-        // Вычисляем центр фигуры и рисуем аккуратную белую плашку с адресом
         addAutoLabel(svgEl, buildingShape, info.shortLabel);
       });
     } catch (err) {
       container.innerHTML = `<div style="padding: 32px; text-align: center; color: #D93025;">
-        Не удалось загрузить <b>karta.svg</b>. Убедитесь, что файл лежит в той же папке и страница открыта через локальный сервер (http://localhost).
+        Не удалось загрузить <b>karta.svg</b>. Убедитесь, что файл лежит в репозитории рядом с index.html.
       </div>`;
     }
   }
 
-  // Автоматическая отрисовка белой плашки с адресом поверх здания (чтобы не рисовать текст в Corel)
   function addAutoLabel(svgEl, shape, text) {
     const bbox = shape.getBBox();
     const cx = bbox.x + bbox.width / 2;
     const cy = bbox.y + bbox.height / 2;
-    const padX = 14;
-    const labelWidth = text.length * 8.5 + padX * 2;
-    const labelHeight = 26;
+    const padX = 10;
+    const labelWidth = text.length * 7 + padX * 2;
+    const labelHeight = 22;
 
     const ns = "http://www.w3.org/2000/svg";
     const g = document.createElementNS(ns, "g");
@@ -285,7 +294,7 @@
     rect.setAttribute("y", cy - labelHeight / 2);
     rect.setAttribute("width", labelWidth);
     rect.setAttribute("height", labelHeight);
-    rect.setAttribute("rx", 6);
+    rect.setAttribute("rx", 4);
     rect.setAttribute("class", "svg-badge-bg");
 
     const label = document.createElementNS(ns, "text");
@@ -299,7 +308,6 @@
     svgEl.appendChild(g);
   }
 
-  // Кнопки быстрого выбора под картой
   function renderBuildingChips() {
     const bar = document.getElementById('buildingsBar');
     Object.entries(buildingsData).forEach(([id, info]) => {
@@ -311,7 +319,6 @@
     });
   }
 
-  // 3. ПЕРЕХОД В ЗДАНИЕ
   function openBuilding(buildingId, highlightRoom = null, targetFloor = null) {
     const data = buildingsData[buildingId];
     if (!data) return;
@@ -323,7 +330,6 @@
     document.getElementById('selectedBuildingTitle').textContent = data.title;
     const activeFloor = targetFloor || data.floors[0];
 
-    // Вкладки этажей
     const tabsEl = document.getElementById('floorTabs');
     tabsEl.innerHTML = '';
     if (data.floors.length > 1) {
@@ -336,12 +342,10 @@
       });
     }
 
-    // Заглушка для файла этажа (подставим реальную загрузку SVG, когда подготовите файлы)
     const fileName = data.svgFiles[activeFloor] || 'plan.svg';
     document.getElementById('buildingPlanPlaceholder').innerHTML =
       `Готово к подключению файла схемы: <b>${fileName}</b> (Этаж: ${activeFloor})`;
 
-    // Список арендаторов на выбранном этаже
     const listEl = document.getElementById('tenantList');
     listEl.innerHTML = '';
     const floorTenants = data.tenants.filter(t => t.floor === activeFloor);
@@ -364,7 +368,6 @@
     document.getElementById('boulevardView').style.display = 'block';
   }
 
-  // 4. ЖИВОЙ ПОИСК ПО ВСЕМ ЗДАНИЯМ БУЛЬВАРА
   const searchInput = document.getElementById('searchInput');
   const searchResults = document.getElementById('searchResults');
 
