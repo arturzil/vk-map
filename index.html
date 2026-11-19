@@ -61,6 +61,8 @@
     @media (hover:hover) { .room.taken:hover { fill:#BBD7FF; } .room.active:hover { fill:var(--accent); } }
     @media (prefers-reduced-motion:reduce) { .room.active { animation:none; } }
     .tenant-row { cursor:pointer; }
+    .room-label { font-weight:600; fill:var(--text); text-anchor:middle; dominant-baseline:central; pointer-events:none; }
+    .room-label.active { fill:#FFF; }
     .info-name { font-size:18px; font-weight:700; }
     .info-cat { font-size:13px; color:var(--muted); margin-bottom:8px; }
     .info-row { padding:10px 0; border-top:1px solid var(--line); font-size:14px; }
@@ -126,75 +128,56 @@
       shortLabel: "Мира 31Б",
       floors: ["0", "1", "2", "3"],
       svgFiles: { "0": "0.svg", "1": "1.svg", "2": "2.svg", "3": "3.svg" },
-      tenants: [
-        { room: "of1", floor: "1", name: "Супермаркет", category: "Продукты" },
-        { room: "of2", floor: "2", name: "Юридический центр", category: "Услуги" }
-      ]
+      tenants: [] // заполняется из data.csv
     },
     "z2": {
       title: "Мира, 31В",
       shortLabel: "Мира 31В",
       floors: ["1"],
       svgFiles: { "1": "m31v.svg" },
-      tenants: [
-        { room: "of1", floor: "1", name: "Кофейня «Бодрый день»", category: "Кофе, выпечка" }
-      ]
+      tenants: [] // заполняется из data.csv
     },
     "z3": {
       title: "Павильон",
       shortLabel: "Павильон",
       floors: ["1"],
       svgFiles: { "1": "pav.svg" },
-      tenants: [
-        { room: "of1", floor: "1", name: "Фермерские продукты", category: "Торговые ряды" },
-        { room: "of2", floor: "1", name: "Пример точки 2", category: "Категория" }
-      ]
+      tenants: [] // заполняется из data.csv
     },
     "z3_0": {
       title: "Магазин",
       shortLabel: "Магазин",
       floors: ["1"],
       single: true, // точка без планировки
-      tenants: [
-        { room: "of1", floor: "1", name: "Магазин", category: "Магазин", description: "", hours: "", phone: "", address: "" }
-      ]
+      tenants: [] // заполняется из data.csv
     },
     "z4": {
       title: "Мира, 25В К1",
       shortLabel: "Мира 25В К1",
       floors: ["1"],
       svgFiles: { "1": "m25vk1.svg" },
-      tenants: [
-        { room: "of1", floor: "1", name: "Аптека «Здоровье»", category: "Аптека" }
-      ]
+      tenants: [] // заполняется из data.csv
     },
     "z5": {
       title: "Мира, 25В К2",
       shortLabel: "Мира 25В К2",
       floors: ["1"],
       svgFiles: { "1": "m25vk2.svg" },
-      tenants: [
-        { room: "of1", floor: "1", name: "ПВЗ Ozon", category: "Пункт выдачи" },
-        { room: "of2", floor: "1", name: "Салон красоты «Марсель»", category: "Услуги" }
-      ]
+      tenants: [] // заполняется из data.csv
     },
     "z6": {
       title: "Мира, 21В",
       shortLabel: "Мира 21В",
       floors: ["1"],
       svgFiles: { "1": "m21v.svg" },
-      tenants: [
-        { room: "of1", floor: "1", name: "Пекарня «Хлебный двор»", category: "Выпечка" }
-      ]
+      tenants: [] // заполняется из data.csv
     },
     "z7": {
       title: "Кофейня",
       shortLabel: "Кофейня",
       floors: ["1"],
       single: true, // точка без планировки
-      tenants: [
-        { room: "of1", floor: "1", name: "Кофейня", category: "Кофе", description: "", hours: "", phone: "", address: "" }
-      ]
+      tenants: [] // заполняется из data.csv
     }
   };
 
@@ -365,7 +348,7 @@
     // Список арендаторов на выбранном этаже
     const listEl = document.getElementById('tenantList');
     listEl.innerHTML = '';
-    if (data.single) { renderInfoCard(listEl, data.tenants[0]); return; }
+    if (data.single) { renderInfoCard(listEl, data.tenants[0] || { name: data.title, category: "" }); return; }
     const floorTenants = data.tenants.filter(t => t.floor === activeFloor);
 
     if (floorTenants.length === 0) {
@@ -376,11 +359,114 @@
         row.className = 'tenant-row' + (t.room === highlightRoom ? ' target-tenant' : '');
         row.dataset.room = t.room;
         row.onclick = () => selectRoom(t.room);
-        row.innerHTML = `<div><strong>${t.name}</strong><div style="font-size:12px; color:#818C99;">${t.category}</div></div>
-                         ${data.single ? '' : `<span style="font-size:12px; font-weight:600;">${t.room}</span>`}`;
+        row.innerHTML = `<div><strong>${t.name}</strong><div style="font-size:12px; color:#818C99;">${t.category}</div></div>`;
         listEl.appendChild(row);
       });
     }
+  }
+
+  // ДАННЫЕ ИЗ data.csv (одна строка = одно помещение или точка; пустое «название» = помещение свободно)
+  function parseCSV(text) {
+    text = text.replace(/^\uFEFF/, '');
+    const first = text.split('\n')[0];
+    const d = (first.match(/;/g) || []).length >= (first.match(/,/g) || []).length ? ';' : ',';
+    const rows = [];
+    let row = [], cell = '', q = false;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (q) {
+        if (ch === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; } else cell += ch;
+      } else if (ch === '"') q = true;
+      else if (ch === d) { row.push(cell); cell = ''; }
+      else if (ch === '\n' || ch === '\r') {
+        if (ch === '\r' && text[i + 1] === '\n') i++;
+        row.push(cell); rows.push(row); row = []; cell = '';
+      } else cell += ch;
+    }
+    if (cell || row.length) { row.push(cell); rows.push(row); }
+    return rows;
+  }
+
+  async function loadTenants() {
+    const res = await fetch('data.csv');
+    if (!res.ok) throw new Error('data.csv не найден');
+    const buf = await res.arrayBuffer();
+    let text;
+    try { text = new TextDecoder('utf-8', { fatal: true }).decode(buf); }
+    catch (e) { text = new TextDecoder('windows-1251').decode(buf); } // файл сохранён не в UTF-8
+    const [head, ...rows] = parseCSV(text);
+    const col = n => head.findIndex(h => h.trim().toLowerCase() === n);
+    const ix = { b: col('здание'), f: col('этаж'), r: col('помещение'), n: col('название'), c: col('категория'),
+                 d: col('описание'), h: col('часы'), p: col('телефон'), a: col('адрес') };
+    Object.values(buildingsData).forEach(b => b.tenants = []);
+    rows.forEach(r => {
+      const g = i => (i >= 0 && r[i] ? r[i].trim() : '');
+      const b = buildingsData[g(ix.b)], name = g(ix.n);
+      if (!b || !name) return;
+      b.tenants.push({ floor: g(ix.f) || b.floors[0], room: g(ix.r), name, category: g(ix.c),
+                       description: g(ix.d), hours: g(ix.h), phone: g(ix.p), address: g(ix.a) });
+    });
+  }
+
+  function mk(tag, attrs) {
+    const e = document.createElementNS(NS, tag);
+    Object.entries(attrs).forEach(([k, v]) => e.setAttribute(k, v));
+    return e;
+  }
+
+  function wrapText(text, maxCh) {
+    const lines = [];
+    let cur = '';
+    for (const word of text.split(/\s+/)) {
+      if (word.length > maxCh) return null;
+      const next = cur ? cur + ' ' + word : word;
+      if (next.length <= maxCh) cur = next; else { lines.push(cur); cur = word; }
+    }
+    lines.push(cur);
+    return lines;
+  }
+
+  // подбирает размер шрифта (12 → 8 px на экране) и перенос строк, чтобы название поместилось в помещение
+  function fitText(name, w, h, k) {
+    for (let px = 12; px >= 8; px--) {
+      const fs = px / k;
+      const lines = wrapText(name, Math.floor(w * 0.88 / (fs * 0.58)));
+      if (lines && lines.length * fs * 1.2 <= h * 0.9) return { fs, lines };
+    }
+    const fs = 8 / k, maxCh = Math.max(3, Math.floor(w * 0.88 / (fs * 0.58)));
+    return { fs, lines: [name.length > maxCh ? name.slice(0, maxCh - 1) + '…' : name] };
+  }
+
+  let planState = null;
+  function drawPlanLabels() {
+    const st = planState;
+    if (!st || !st.svg.isConnected) return;
+    const svg = st.svg, rect = svg.getBoundingClientRect();
+    if (!rect.width) return;
+    svg.querySelectorAll('.room-labels').forEach(n => n.remove());
+    const k = rect.width / svg.viewBox.baseVal.width;
+    const inv = svg.getScreenCTM().inverse();
+    const layer = mk('g', { class: 'room-labels' });
+    st.tenants.forEach(t => {
+      const room = svg.getElementById(t.room);
+      if (!room) return;
+      const bb = room.getBBox(), M = inv.multiply(room.getScreenCTM());
+      const pts = [[bb.x, bb.y], [bb.x + bb.width, bb.y], [bb.x, bb.y + bb.height], [bb.x + bb.width, bb.y + bb.height]]
+        .map(([x, y]) => new DOMPoint(x, y).matrixTransform(M));
+      const xs = pts.map(q => q.x), ys = pts.map(q => q.y);
+      const w = Math.max(...xs) - Math.min(...xs), h = Math.max(...ys) - Math.min(...ys);
+      const cx = Math.min(...xs) + w / 2, cy = Math.min(...ys) + h / 2;
+      const { fs, lines } = fitText(t.name, w, h, k);
+      const text = mk('text', { class: 'room-label', 'font-size': fs, 'data-room': t.room });
+      lines.forEach((ln, i) => {
+        const sp = mk('tspan', { x: cx, y: cy + (i - (lines.length - 1) / 2) * fs * 1.2 });
+        sp.textContent = ln;
+        text.appendChild(sp);
+      });
+      layer.appendChild(text);
+    });
+    svg.appendChild(layer);
+    layer.querySelectorAll('.room-label').forEach(l => l.classList.toggle('active', l.dataset.room === st.active));
   }
 
   // СХЕМЫ ЭТАЖЕЙ: помещения в SVG называются of1, of2... и сопоставляются с room арендатора
@@ -390,6 +476,7 @@
   async function loadPlan(file, floorTenants, highlightRoom) {
     const el = document.getElementById('buildingPlanPlaceholder');
     const token = ++planToken;
+    planState = null;
     el.classList.remove('vertical');
     el.innerHTML = '<div class="plan-msg">Загрузка схемы...</div>';
     try {
@@ -422,10 +509,14 @@
         r.addEventListener('click', () => selectRoom(r.id, true));
       }
     });
+    planState = { svg, tenants: floorTenants, active: highlightRoom };
+    drawPlanLabels();
     selectRoom(highlightRoom);
   }
 
   function selectRoom(roomId, scroll) {
+    if (planState) planState.active = roomId;
+    document.querySelectorAll('#buildingPlanPlaceholder .room-label').forEach(l => l.classList.toggle('active', l.dataset.room === roomId));
     document.querySelectorAll('#buildingPlanPlaceholder .room').forEach(r => r.classList.toggle('active', r.id === roomId));
     document.querySelectorAll('#tenantList .tenant-row').forEach(r => {
       const on = r.dataset.room === roomId;
@@ -488,7 +579,9 @@
   });
 
   renderBuildingChips();
+  loadTenants().catch(e => console.error('Не удалось загрузить data.csv', e));
   loadBoulevardMap();
+  new ResizeObserver(() => drawPlanLabels()).observe(document.getElementById('buildingPlanPlaceholder'));
 </script>
 </body>
 </html>
