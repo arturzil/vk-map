@@ -60,7 +60,10 @@
     .room.active { fill:var(--accent); animation:pulse 2.4s ease-in-out infinite; }
     @media (hover:hover) { .room.taken:hover { fill:#BBD7FF; } .room.active:hover { fill:var(--accent); } }
     @media (prefers-reduced-motion:reduce) { .room.active { animation:none; } }
-    .tenant-row { cursor:pointer; }
+    .tenant-row { cursor:pointer; display:block; }
+    .tenant-details { display:none; margin-top:8px; }
+    .tenant-row.target-tenant .tenant-details { display:block; }
+    .info-row a { word-break:break-all; }
     .room-label { font-weight:600; fill:var(--text); text-anchor:middle; dominant-baseline:central; pointer-events:none; }
     .room-label.active { fill:#FFF; }
     .info-name { font-size:18px; font-weight:700; }
@@ -359,7 +362,7 @@
         row.className = 'tenant-row' + (t.room === highlightRoom ? ' target-tenant' : '');
         row.dataset.room = t.room;
         row.onclick = () => selectRoom(t.room);
-        row.innerHTML = `<div><strong>${t.name}</strong><div style="font-size:12px; color:#818C99;">${t.category}</div></div>`;
+        row.innerHTML = `<div><strong>${t.name}</strong><div style="font-size:12px; color:#818C99;">${t.category}</div></div><div class="tenant-details">${detailsHTML(t)}</div>`;
         listEl.appendChild(row);
       });
     }
@@ -526,15 +529,29 @@
   }
 
   // Карточка фирмы для зданий без планировки (single). Пустые поля не показываются.
-  function renderInfoCard(el, t) {
-    const rows = [
+  // Колонка «адрес» в data.csv = ссылка на сайт или группу ВК (https:// можно не писать)
+  function linkHTML(raw) {
+    let url = raw.trim();
+    if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+    let host;
+    try { host = new URL(url).hostname.replace(/^www\./, ''); } catch (e) { return ''; }
+    const label = /(^|\.)(vk\.com|vk\.ru)$/.test(host) ? 'Группа ВКонтакте' : host;
+    return `<a href="${url.replace(/"/g, '%22')}" target="_blank" rel="noopener noreferrer">${label} ↗</a>`;
+  }
+
+  // Подробности о заведении: пустые поля не показываются
+  function detailsHTML(t) {
+    return [
       ['Описание', t.description],
       ['Время работы', t.hours],
       ['Телефон', t.phone && `<a href="tel:${t.phone.replace(/[^\d+]/g, '')}">${t.phone}</a>`],
-      ['Адрес', t.address]
-    ].filter(([, v]) => v);
-    el.innerHTML = `<div><div class="info-name">${t.name}</div><div class="info-cat">${t.category}</div>` +
-      rows.map(([k, v]) => `<div class="info-row"><span>${k}</span>${v}</div>`).join('') + '</div>';
+      ['Сайт', t.address && linkHTML(t.address)]
+    ].filter(([, v]) => v).map(([k, v]) => `<div class="info-row"><span>${k}</span>${v}</div>`).join('');
+  }
+
+  // Карточка фирмы для зданий без планировки
+  function renderInfoCard(el, t) {
+    el.innerHTML = `<div><div class="info-name">${t.name}</div><div class="info-cat">${t.category}</div>${detailsHTML(t)}</div>`;
   }
 
   function showBoulevard() {
