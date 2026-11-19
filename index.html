@@ -34,6 +34,9 @@
     /* плашки с адресами */
     .map-label { cursor:pointer; }
     .lbl-bg { fill:#FFF; stroke:#D5D8DD; stroke-width:1; vector-effect:non-scaling-stroke; }
+    .lbl-line { stroke:var(--accent); stroke-width:1.5; vector-effect:non-scaling-stroke; opacity:.7; }
+    .lbl-dot { fill:var(--accent); }
+    @media (hover:hover) { .map-label:hover .lbl-bg { stroke:var(--accent); } }
     .lbl-text { font-weight:600; fill:var(--text); text-anchor:middle; dominant-baseline:central; }
 
     .buildings-bar { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
@@ -238,7 +241,7 @@
     drawLabels();
   }
 
-  // Плашки рисуются поверх карты, всегда горизонтально и одного размера на экране (~12px)
+  // Подписи вынесены в свободную зону карты (справа на вертикальной, сверху на горизонтальной) и соединены со зданием линией
   function drawLabels() {
     const svgEl = document.querySelector('#svgContainer svg');
     if (!svgEl) return;
@@ -246,36 +249,61 @@
     if (!rect.width) return;
     svgEl.querySelectorAll('.map-labels').forEach(n => n.remove());
 
-    const fs = 12 / (rect.width / svgEl.viewBox.baseVal.width); // размер шрифта в единицах viewBox
+    const vb = svgEl.viewBox.baseVal;
+    const fs = 12 / (rect.width / vb.width), h = fs * 2.1; // шрифт ~12px на экране
     const inv = svgEl.getScreenCTM().inverse();
-    const layer = document.createElementNS(NS, 'g');
-    layer.setAttribute('class', 'map-labels');
-
-    Object.entries(buildingsData).forEach(([id, info]) => {
+    const items = Object.entries(buildingsData).map(([id, info]) => {
       const shape = svgEl.getElementById(id);
-      if (!shape) return;
-      // центр здания с учётом его transform и поворота карты
-      const bb = shape.getBBox();
-      const M = inv.multiply(shape.getScreenCTM());
+      if (!shape) return null;
+      const bb = shape.getBBox(), M = inv.multiply(shape.getScreenCTM());
       const pts = [[bb.x, bb.y], [bb.x + bb.width, bb.y], [bb.x, bb.y + bb.height], [bb.x + bb.width, bb.y + bb.height]]
         .map(([x, y]) => new DOMPoint(x, y).matrixTransform(M));
       const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
-      const minY = Math.min(...ys), maxY = Math.max(...ys);
-      const w = info.shortLabel.length * fs * 0.62 + fs * 1.6, h = fs * 2.1;
-      // если плашка закрывает здание (оно низкое или маленькое), ставим её над зданием, чтобы мерцание было видно
-      const cy = h > (maxY - minY) * 0.8 ? minY - h / 2 - fs * 0.3 : (minY + maxY) / 2;
-      const c = { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: Math.max(h / 2, cy) };
+      return { id, text: info.shortLabel, w: info.shortLabel.length * fs * 0.62 + fs * 1.6,
+        minX: Math.min(...xs), maxX: Math.max(...xs), minY: Math.min(...ys), maxY: Math.max(...ys) };
+    }).filter(Boolean);
+    if (!items.length) return;
 
-      const g = document.createElementNS(NS, 'g');
-      g.setAttribute('class', 'map-label');
-      g.addEventListener('click', () => openBuilding(id));
-      const bg = document.createElementNS(NS, 'rect');
-      [['x', c.x - w / 2], ['y', c.y - h / 2], ['width', w], ['height', h], ['rx', fs * 0.5], ['class', 'lbl-bg']]
-        .forEach(([k, v]) => bg.setAttribute(k, v));
-      const t = document.createElementNS(NS, 'text');
-      [['x', c.x], ['y', c.y], ['font-size', fs], ['class', 'lbl-text']].forEach(([k, v]) => t.setAttribute(k, v));
-      t.textContent = info.shortLabel;
-      g.append(bg, t);
+    if (isVertical) {
+      // колонка подписей справа, линии горизонтальные
+      const maxW = Math.max(...items.map(i => i.w));
+      const x0 = Math.min(Math.max(...items.map(i => i.maxX)) + fs * 1.5, vb.width - maxW - 4);
+      items.forEach(i => {
+        i.ay = (i.minY + i.maxY) / 2;
+        Object.assign(i, { lx: x0, ly: i.ay - h / 2, ax: i.maxX, tx: x0, ty: i.ay });
+      });
+    } else {
+      // ряд подписей сверху; если подписи задевают друг друга, часть уходит на второй ряд
+      const baseY = Math.min(...items.map(i => i.minY)) - fs * 1.5 - h;
+      const lanes = [];
+      items.sort((a, b) => a.minX - b.minX).forEach(i => {
+        const cx = (i.minX + i.maxX) / 2;
+        i.lx = Math.min(Math.max(cx - i.w / 2, 2), vb.width - i.w - 2);
+        let lane = 0;
+        while (lanes[lane] !== undefined && i.lx < lanes[lane] + fs) lane++;
+        lanes[lane] = i.lx + i.w;
+        i.ly = baseY - lane * (h + fs * 0.5);
+        Object.assign(i, { ax: cx, ay: i.minY, tx: Math.min(Math.max(cx, i.lx + fs), i.lx + i.w - fs), ty: i.ly + h });
+      });
+    }
+
+    const mk = (tag, attrs) => {
+      const e = document.createElementNS(NS, tag);
+      Object.entries(attrs).forEach(([k, v]) => e.setAttribute(k, v));
+      return e;
+    };
+    const layer = mk('g', { class: 'map-labels' });
+    items.forEach(i => {
+      const g = mk('g', { class: 'map-label' });
+      g.addEventListener('click', () => openBuilding(i.id));
+      const t = mk('text', { x: i.lx + i.w / 2, y: i.ly + h / 2, 'font-size': fs, class: 'lbl-text' });
+      t.textContent = i.text;
+      g.append(
+        mk('line', { x1: i.ax, y1: i.ay, x2: i.tx, y2: i.ty, class: 'lbl-line' }),
+        mk('circle', { cx: i.ax, cy: i.ay, r: fs * 0.22, class: 'lbl-dot' }),
+        mk('rect', { x: i.lx, y: i.ly, width: i.w, height: h, rx: fs * 0.5, class: 'lbl-bg' }),
+        t
+      );
       layer.appendChild(g);
     });
     svgEl.appendChild(layer);
