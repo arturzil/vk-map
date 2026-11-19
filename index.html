@@ -52,6 +52,15 @@
     .tenant-list { display:flex; flex-direction:column; gap:8px; }
     .tenant-row { padding:12px; border-radius:10px; background:var(--page); display:flex; justify-content:space-between; align-items:center; }
     .tenant-row.target-tenant { background:#EBF3FF; border:1.5px solid var(--accent); }
+    .plan-viewport { border-radius:10px; overflow:hidden; background:#F8F9F4; margin-bottom:16px; }
+    .plan-viewport svg { width:100%; height:auto; display:block; }
+    .plan-viewport.vertical svg { max-width:240px; margin:0 auto; }
+    .plan-msg { padding:24px; text-align:center; color:var(--muted); font-size:14px; }
+    .room.taken { fill:#DCEBFF; cursor:pointer; }
+    .room.active { fill:var(--accent); animation:pulse 2.4s ease-in-out infinite; }
+    @media (hover:hover) { .room.taken:hover { fill:#BBD7FF; } .room.active:hover { fill:var(--accent); } }
+    @media (prefers-reduced-motion:reduce) { .room.active { animation:none; } }
+    .tenant-row { cursor:pointer; }
     .info-name { font-size:18px; font-weight:700; }
     .info-cat { font-size:13px; color:var(--muted); margin-bottom:8px; }
     .info-row { padding:10px 0; border-top:1px solid var(--line); font-size:14px; }
@@ -102,9 +111,7 @@
     <div id="floorTabs" class="floor-tabs"></div>
 
     <!-- Место для будущих SVG-схем этажей (например, z1-floor1.svg) -->
-    <div id="buildingPlanPlaceholder" style="padding: 24px; border: 1.5px dashed #DCE1E6; border-radius: 12px; text-align: center; color: #818C99; margin-bottom: 16px;">
-      Здесь отобразится SVG-схема выбранного этажа
-    </div>
+    <div id="buildingPlanPlaceholder" class="plan-viewport"></div>
 
     <div id="tenantList" class="tenant-list"></div>
   </div>
@@ -118,29 +125,29 @@
       title: "Мира, 31Б",
       shortLabel: "Мира 31Б",
       floors: ["0", "1", "2", "3"],
-      svgFiles: { "0": "mira31b-0.svg", "1": "mira31b-1.svg", "2": "mira31b-2.svg", "3": "mira31b-3.svg" },
+      svgFiles: { "0": "0.svg", "1": "1.svg", "2": "2.svg", "3": "3.svg" },
       tenants: [
-        { room: "office-1", floor: "1", name: "Супермаркет", category: "Продукты" },
-        { room: "office-2", floor: "2", name: "Юридический центр", category: "Услуги" }
+        { room: "of1", floor: "1", name: "Супермаркет", category: "Продукты" },
+        { room: "of2", floor: "2", name: "Юридический центр", category: "Услуги" }
       ]
     },
     "z2": {
       title: "Мира, 31В",
       shortLabel: "Мира 31В",
       floors: ["1"],
-      svgFiles: { "1": "mira31v.svg" },
+      svgFiles: { "1": "m31v.svg" },
       tenants: [
-        { room: "office-1", floor: "1", name: "Кофейня «Бодрый день»", category: "Кофе, выпечка" }
+        { room: "of1", floor: "1", name: "Кофейня «Бодрый день»", category: "Кофе, выпечка" }
       ]
     },
     "z3": {
       title: "Павильон",
       shortLabel: "Павильон",
       floors: ["1"],
-      svgFiles: { "1": "pavilion.svg" },
+      svgFiles: { "1": "pav.svg" },
       tenants: [
-        { room: "office-1", floor: "1", name: "Фермерские продукты", category: "Торговые ряды" },
-        { room: "office-2", floor: "1", name: "Пример точки 2", category: "Категория" }
+        { room: "of1", floor: "1", name: "Фермерские продукты", category: "Торговые ряды" },
+        { room: "of2", floor: "1", name: "Пример точки 2", category: "Категория" }
       ]
     },
     "z3_0": {
@@ -149,35 +156,35 @@
       floors: ["1"],
       single: true, // точка без планировки
       tenants: [
-        { room: "office-1", floor: "1", name: "Магазин", category: "Магазин", description: "", hours: "", phone: "", address: "" }
+        { room: "of1", floor: "1", name: "Магазин", category: "Магазин", description: "", hours: "", phone: "", address: "" }
       ]
     },
     "z4": {
       title: "Мира, 25В К1",
       shortLabel: "Мира 25В К1",
       floors: ["1"],
-      svgFiles: { "1": "mira25v-k1.svg" },
+      svgFiles: { "1": "m25vk1.svg" },
       tenants: [
-        { room: "office-1", floor: "1", name: "Аптека «Здоровье»", category: "Аптека" }
+        { room: "of1", floor: "1", name: "Аптека «Здоровье»", category: "Аптека" }
       ]
     },
     "z5": {
       title: "Мира, 25В К2",
       shortLabel: "Мира 25В К2",
       floors: ["1"],
-      svgFiles: { "1": "mira25v-k2.svg" },
+      svgFiles: { "1": "m25vk2.svg" },
       tenants: [
-        { room: "office-1", floor: "1", name: "ПВЗ Ozon", category: "Пункт выдачи" },
-        { room: "office-2", floor: "1", name: "Салон красоты «Марсель»", category: "Услуги" }
+        { room: "of1", floor: "1", name: "ПВЗ Ozon", category: "Пункт выдачи" },
+        { room: "of2", floor: "1", name: "Салон красоты «Марсель»", category: "Услуги" }
       ]
     },
     "z6": {
       title: "Мира, 21В",
       shortLabel: "Мира 21В",
       floors: ["1"],
-      svgFiles: { "1": "mira21v.svg" },
+      svgFiles: { "1": "m21v.svg" },
       tenants: [
-        { room: "office-1", floor: "1", name: "Пекарня «Хлебный двор»", category: "Выпечка" }
+        { room: "of1", floor: "1", name: "Пекарня «Хлебный двор»", category: "Выпечка" }
       ]
     },
     "z7": {
@@ -186,7 +193,7 @@
       floors: ["1"],
       single: true, // точка без планировки
       tenants: [
-        { room: "office-1", floor: "1", name: "Кофейня", category: "Кофе", description: "", hours: "", phone: "", address: "" }
+        { room: "of1", floor: "1", name: "Кофейня", category: "Кофе", description: "", hours: "", phone: "", address: "" }
       ]
     }
   };
@@ -213,6 +220,15 @@
     }
   }
 
+  function rotateSvg(svgEl) {
+    const { width: W, height: H } = svgEl.viewBox.baseVal;
+    const g = document.createElementNS(NS, 'g');
+    g.setAttribute('transform', `translate(${H} 0) rotate(90)`);
+    while (svgEl.firstChild) g.appendChild(svgEl.firstChild);
+    svgEl.appendChild(g);
+    svgEl.setAttribute('viewBox', `0 0 ${H} ${W}`);
+  }
+
   function buildMap() {
     const container = document.getElementById('svgContainer');
     isVertical = mq.matches;
@@ -223,14 +239,7 @@
     svgEl.removeAttribute('width');
     svgEl.removeAttribute('height');
 
-    if (isVertical) {
-      const { width: W, height: H } = svgEl.viewBox.baseVal;
-      const g = document.createElementNS(NS, 'g');
-      g.setAttribute('transform', `translate(${H} 0) rotate(90)`);
-      while (svgEl.firstChild) g.appendChild(svgEl.firstChild);
-      svgEl.appendChild(g);
-      svgEl.setAttribute('viewBox', `0 0 ${H} ${W}`);
-    }
+    if (isVertical) rotateSvg(svgEl);
 
     Object.keys(buildingsData).forEach(id => {
       const shape = svgEl.getElementById(id);
@@ -350,10 +359,7 @@
     // Заглушка для файла этажа (подставим реальную загрузку SVG, когда подготовите файлы)
     const planEl = document.getElementById('buildingPlanPlaceholder');
     planEl.style.display = data.single ? 'none' : 'block';
-    if (!data.single) {
-      const fileName = data.svgFiles[activeFloor] || 'plan.svg';
-      planEl.innerHTML = `Готово к подключению файла схемы: <b>${fileName}</b> (Этаж: ${activeFloor})`;
-    }
+    if (!data.single) loadPlan(data.svgFiles[activeFloor], data.tenants.filter(t => t.floor === activeFloor), highlightRoom);
     document.getElementById('selectedBuildingSub').textContent = data.single ? 'Информация' : 'Схема помещений';
 
     // Список арендаторов на выбранном этаже
@@ -368,11 +374,64 @@
       floorTenants.forEach(t => {
         const row = document.createElement('div');
         row.className = 'tenant-row' + (t.room === highlightRoom ? ' target-tenant' : '');
+        row.dataset.room = t.room;
+        row.onclick = () => selectRoom(t.room);
         row.innerHTML = `<div><strong>${t.name}</strong><div style="font-size:12px; color:#818C99;">${t.category}</div></div>
                          ${data.single ? '' : `<span style="font-size:12px; font-weight:600;">${t.room}</span>`}`;
         listEl.appendChild(row);
       });
     }
+  }
+
+  // СХЕМЫ ЭТАЖЕЙ: помещения в SVG называются of1, of2... и сопоставляются с room арендатора
+  const planCache = {};
+  let planToken = 0;
+
+  async function loadPlan(file, floorTenants, highlightRoom) {
+    const el = document.getElementById('buildingPlanPlaceholder');
+    const token = ++planToken;
+    el.classList.remove('vertical');
+    el.innerHTML = '<div class="plan-msg">Загрузка схемы...</div>';
+    try {
+      if (!planCache[file]) {
+        const r = await fetch(file);
+        if (!r.ok) throw new Error(file);
+        planCache[file] = await r.text();
+      }
+    } catch (e) {
+      if (token === planToken) el.innerHTML = `<div class="plan-msg">Схема <b>${file}</b> пока не загружена</div>`;
+      return;
+    }
+    if (token !== planToken) return; // за время загрузки открыли другой этаж
+    el.innerHTML = planCache[file];
+    const svg = el.querySelector('svg');
+    if (!svg) return;
+    svg.removeAttribute('width');
+    svg.removeAttribute('height');
+    const vb = svg.viewBox.baseVal;
+    if (mq.matches && vb.width / vb.height > 4) { // очень длинные схемы на телефоне поворачиваем
+      rotateSvg(svg);
+      el.classList.add('vertical');
+    }
+    const taken = new Set(floorTenants.map(t => t.room));
+    svg.querySelectorAll('[id^="of"]').forEach(r => {
+      if (!/^of\d+$/.test(r.id)) return;
+      r.classList.add('room');
+      if (taken.has(r.id)) {
+        r.classList.add('taken');
+        r.addEventListener('click', () => selectRoom(r.id, true));
+      }
+    });
+    selectRoom(highlightRoom);
+  }
+
+  function selectRoom(roomId, scroll) {
+    document.querySelectorAll('#buildingPlanPlaceholder .room').forEach(r => r.classList.toggle('active', r.id === roomId));
+    document.querySelectorAll('#tenantList .tenant-row').forEach(r => {
+      const on = r.dataset.room === roomId;
+      r.classList.toggle('target-tenant', on);
+      if (on && scroll) r.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
   }
 
   // Карточка фирмы для зданий без планировки (single). Пустые поля не показываются.
