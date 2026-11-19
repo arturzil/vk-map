@@ -5,138 +5,56 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Интерактивная карта бульвара</title>
   <style>
-    :root {
-      --bg-page: #F5F6F8;
-      --bg-card: #FFFFFF;
-      --text-main: #1C1D1F;
-      --text-muted: #818C99;
-      --accent-blue: #0077FF;
-      --accent-hover: #0062D1;
-      --border-light: #E1E3E6;
-    }
+    :root { --page:#F5F6F8; --card:#FFF; --text:#1C1D1F; --muted:#818C99; --accent:#0077FF; --line:#E7E8EC; }
+    * { box-sizing:border-box; margin:0; padding:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+    body { background:var(--page); color:var(--text); padding:12px; }
+    .app-container { max-width:1040px; margin:0 auto; display:flex; flex-direction:column; gap:12px; }
+    .header-card, .map-card, .building-modal { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; }
+    .header-top { margin-bottom:12px; }
+    .header-title { font-size:18px; font-weight:700; }
+    .search-input { width:100%; padding:12px 14px; border-radius:10px; border:1px solid var(--line); background:var(--page); font-size:15px; outline:none; transition:.2s; }
+    .search-input:focus { border-color:var(--accent); background:#FFF; }
+    .search-results { margin-top:8px; display:none; flex-direction:column; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+    .search-item { padding:12px 14px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:8px; border-bottom:1px solid var(--line); font-size:14px; }
+    .search-item:last-child { border-bottom:none; }
+    .search-item-building { background:#EBF3FF; color:var(--accent); padding:3px 8px; border-radius:6px; font-size:12px; font-weight:600; white-space:nowrap; }
+    @media (hover:hover) { .search-item:hover { background:#F5F9FF; } }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    body { background: var(--bg-page); color: var(--text-main); padding: 16px; }
+    .map-hint { font-size:13px; color:var(--muted); margin-bottom:10px; }
+    .svg-viewport { border-radius:10px; overflow:hidden; background:#F8F9F4; }
+    .svg-viewport svg { width:100%; height:auto; display:block; }
+    .svg-viewport.vertical svg { max-width:480px; margin:0 auto; }
 
-    .app-container { max-width: 1040px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+    /* здания: мягкая пульсация, чтобы сразу было видно, куда нажимать */
+    .building-zone { fill:var(--accent); cursor:pointer; animation:pulse 2.4s ease-in-out infinite; }
+    @keyframes pulse { 0%,100% { fill-opacity:1; } 50% { fill-opacity:.4; } }
+    @media (hover:hover) { .building-zone:hover { animation:none; fill:#0062D1; } }
+    @media (prefers-reduced-motion:reduce) { .building-zone { animation:none; } }
 
-    /* Шапка и поиск */
-    .header-card { background: var(--bg-card); padding: 16px 20px; border-radius: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
-    .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 12px; flex-wrap: wrap; }
-    .header-title { font-size: 20px; font-weight: 700; }
-    .header-sub { font-size: 13px; color: var(--text-muted); }
+    /* плашки с адресами */
+    .map-label { cursor:pointer; }
+    .lbl-bg { fill:#FFF; stroke:#D5D8DD; stroke-width:1; vector-effect:non-scaling-stroke; }
+    .lbl-text { font-weight:600; fill:var(--text); text-anchor:middle; dominant-baseline:central; }
 
-    .search-box { position: relative; }
-    .search-input {
-      width: 100%; padding: 12px 16px; border-radius: 12px;
-      border: 1px solid #DCE1E6; background: #F5F6F8; font-size: 15px; outline: none; transition: 0.2s;
-    }
-    .search-input:focus { border-color: var(--accent-blue); background: #FFF; }
+    .buildings-bar { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+    .b-chip { padding:8px 12px; border-radius:10px; border:1px solid var(--line); background:#FFF; font-size:13px; font-weight:600; color:var(--text); cursor:pointer; }
+    @media (hover:hover) { .b-chip:hover { border-color:var(--accent); color:var(--accent); } }
 
-    /* Результаты поиска */
-    .search-results {
-      margin-top: 8px; display: none; flex-direction: column;
-      background: #FFF; border-radius: 12px; border: 1px solid var(--border-light); overflow: hidden;
-    }
-    .search-item {
-      padding: 12px 16px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;
-      border-bottom: 1px solid #F0F2F5; font-size: 14px; transition: background 0.15s;
-    }
-    .search-item:last-child { border-bottom: none; }
-    .search-item:hover { background: #F0F5FF; }
-    .search-item-building {
-      background: #EBF3FF; color: var(--accent-blue); padding: 3px 8px;
-      border-radius: 6px; font-size: 12px; font-weight: 600;
-    }
-
-    /* Карточка с картой бульвара */
-    .map-card { background: var(--bg-card); padding: 16px; border-radius: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
-    .map-hint { font-size: 13px; color: var(--text-muted); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
-
-    .svg-viewport {
-      width: 100%; overflow-x: auto; border-radius: 12px;
-      border: 1px solid #EBEDF0; background: #F9FAFB; position: relative;
-      -webkit-overflow-scrolling: touch;
-    }
-    .svg-viewport svg { width: 100%; min-width: 780px; height: auto; display: block; }
-
-    /* Пульсация и перелив для зданий */
-    @keyframes buildingPulse {
-      0% {
-        filter: drop-shadow(0 0 2px rgba(0, 119, 255, 0.3));
-        opacity: 0.9;
-      }
-      50% {
-        filter: drop-shadow(0 0 10px rgba(0, 119, 255, 0.9));
-        opacity: 1;
-      }
-      100% {
-        filter: drop-shadow(0 0 2px rgba(0, 119, 255, 0.3));
-        opacity: 0.9;
-      }
-    }
-
-    .building-zone {
-      cursor: pointer;
-      animation: buildingPulse 2.5s infinite ease-in-out;
-      transition: transform 0.2s ease, filter 0.2s ease;
-      transform-box: fill-box;
-      transform-origin: center;
-    }
-    .building-zone:hover {
-      animation: none;
-      opacity: 1;
-      filter: drop-shadow(0 0 12px rgba(0, 119, 255, 1));
-      transform: scale(1.02);
-    }
-    .building-zone.highlighted {
-      stroke: var(--accent-blue) !important;
-      stroke-width: 4px !important;
-    }
-
-    /* Автоматические таблички с адресами поверх SVG */
-    .svg-badge-bg { fill: rgba(255, 255, 255, 0.95); stroke: #DCE1E6; stroke-width: 1; pointer-events: none; }
-    .svg-badge-text {
-      font-size: 11px; font-weight: 700; fill: #1C1D1F;
-      text-anchor: middle; dominant-baseline: central; pointer-events: none;
-    }
-
-    /* Быстрые кнопки зданий под картой */
-    .buildings-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
-    .b-chip {
-      padding: 8px 14px; border-radius: 10px; border: 1px solid var(--border-light);
-      background: #FFF; font-size: 13px; font-weight: 600; color: var(--text-main);
-      cursor: pointer; transition: 0.2s;
-    }
-    .b-chip:hover { border-color: var(--accent-blue); color: var(--accent-blue); background: #F5F9FF; }
-
-    /* Модальное окно / экран выбранного здания */
-    .building-modal {
-      display: none; background: var(--bg-card); padding: 20px; border-radius: 16px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.08); border: 1px solid var(--border-light);
-      animation: fadeIn 0.2s ease;
-    }
-    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; gap: 12px; }
-    .back-btn {
-      padding: 8px 14px; border-radius: 10px; border: none; background: #EBF3FF;
-      color: var(--accent-blue); font-weight: 600; font-size: 14px; cursor: pointer;
-    }
-    .back-btn:hover { background: #DCEBFF; }
-    .floor-tabs { display: flex; gap: 6px; margin-bottom: 14px; }
-    .floor-tab {
-      padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border-light);
-      background: #F5F6F8; font-weight: 600; font-size: 13px; cursor: pointer;
-    }
-    .floor-tab.active { background: var(--accent-blue); color: #FFF; border-color: var(--accent-blue); }
-
-    .tenant-list { display: flex; flex-direction: column; gap: 8px; }
-    .tenant-row {
-      padding: 12px; border-radius: 10px; background: #F8F9FA;
-      display: flex; justify-content: space-between; align-items: center;
-    }
-    .tenant-row.target-tenant { background: #EBF3FF; border: 1.5px solid var(--accent-blue); }
-
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    .building-modal { display:none; animation:fadeIn .2s ease; }
+    .modal-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; gap:12px; }
+    .back-btn { padding:8px 14px; border-radius:10px; border:none; background:#EBF3FF; color:var(--accent); font-weight:600; font-size:14px; cursor:pointer; }
+    .floor-tabs { display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap; }
+    .floor-tab { padding:6px 14px; border-radius:8px; border:1px solid var(--line); background:var(--page); font-weight:600; font-size:13px; cursor:pointer; }
+    .floor-tab.active { background:var(--accent); color:#FFF; border-color:var(--accent); }
+    .tenant-list { display:flex; flex-direction:column; gap:8px; }
+    .tenant-row { padding:12px; border-radius:10px; background:var(--page); display:flex; justify-content:space-between; align-items:center; }
+    .tenant-row.target-tenant { background:#EBF3FF; border:1.5px solid var(--accent); }
+    .info-name { font-size:18px; font-weight:700; }
+    .info-cat { font-size:13px; color:var(--muted); margin-bottom:8px; }
+    .info-row { padding:10px 0; border-top:1px solid var(--line); font-size:14px; }
+    .info-row span { display:block; font-size:12px; color:var(--muted); margin-bottom:2px; }
+    .info-row a { color:var(--accent); text-decoration:none; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
   </style>
 </head>
 <body>
@@ -146,29 +64,29 @@
   <div class="header-card">
     <div class="header-top">
       <div class="header-title">Навигатор по бульвару</div>
-      <div class="header-sub">Выберите здание на схеме или найдите компанию</div>
-    </div>
+      </div>
     <div class="search-box">
       <input type="text" id="searchInput" class="search-input" placeholder="Поиск компании, магазина или услуги...">
       <div id="searchResults" class="search-results"></div>
     </div>
   </div>
 
-  <!-- Экран 1: Общая карта бульвара -->
+  <!-- Экран 1: Общая карта бульвара (karta.svg) -->
   <div id="boulevardView" class="map-card">
     <div class="map-hint">
       <span>Нажмите на здание, чтобы открыть схему помещений</span>
-      <span>↔ Прокрутите карту</span>
     </div>
 
+    <!-- Сюда скрипт автоматически подгрузит ваш файл karta.svg -->
     <div id="svgContainer" class="svg-viewport">
       <div style="padding: 40px; text-align: center; color: #818C99;">Загрузка карты бульвара...</div>
     </div>
 
+    <!-- Дублирующие кнопки зданий для быстрого перехода с мобильного -->
     <div id="buildingsBar" class="buildings-bar"></div>
   </div>
 
-  <!-- Экран 2: Схема выбранного здания -->
+  <!-- Экран 2: Внутренняя схема выбранного здания (открывается при клике на z1..z6) -->
   <div id="buildingView" class="building-modal">
     <div class="modal-header">
       <div>
@@ -180,6 +98,7 @@
 
     <div id="floorTabs" class="floor-tabs"></div>
 
+    <!-- Место для будущих SVG-схем этажей (например, z1-floor1.svg) -->
     <div id="buildingPlanPlaceholder" style="padding: 24px; border: 1.5px dashed #DCE1E6; border-radius: 12px; text-align: center; color: #818C99; margin-bottom: 16px;">
       Здесь отобразится SVG-схема выбранного этажа
     </div>
@@ -189,12 +108,14 @@
 </div>
 
 <script>
+  // 1. БАЗА ЗДАНИЙ (привязка ID из karta.svg к адресам, этажам и арендаторам)
+  // Проверьте соответствие z1..z6 вашим объектам в CorelDRAW
   const buildingsData = {
     "z1": {
       title: "Мира, 31Б",
       shortLabel: "Мира 31Б",
-      floors: ["1", "2", "3"],
-      svgFiles: { "1": "mira31b-1.svg", "2": "mira31b-2.svg", "3": "mira31b-3.svg" },
+      floors: ["0", "1", "2", "3"],
+      svgFiles: { "0": "mira31b-0.svg", "1": "mira31b-1.svg", "2": "mira31b-2.svg", "3": "mira31b-3.svg" },
       tenants: [
         { room: "office-1", floor: "1", name: "Супермаркет", category: "Продукты" },
         { room: "office-2", floor: "2", name: "Юридический центр", category: "Услуги" }
@@ -215,7 +136,17 @@
       floors: ["1"],
       svgFiles: { "1": "pavilion.svg" },
       tenants: [
-        { room: "office-1", floor: "1", name: "Фермерские продукты", category: "Торговые ряды" }
+        { room: "office-1", floor: "1", name: "Фермерские продукты", category: "Торговые ряды" },
+        { room: "office-2", floor: "1", name: "Пример точки 2", category: "Категория" }
+      ]
+    },
+    "z3_0": {
+      title: "Магазин",
+      shortLabel: "Магазин",
+      floors: ["1"],
+      single: true, // точка без планировки
+      tenants: [
+        { room: "office-1", floor: "1", name: "Магазин", category: "Магазин", description: "", hours: "", phone: "", address: "" }
       ]
     },
     "z4": {
@@ -245,69 +176,112 @@
       tenants: [
         { room: "office-1", floor: "1", name: "Пекарня «Хлебный двор»", category: "Выпечка" }
       ]
+    },
+    "z7": {
+      title: "Кофейня",
+      shortLabel: "Кофейня",
+      floors: ["1"],
+      single: true, // точка без планировки
+      tenants: [
+        { room: "office-1", floor: "1", name: "Кофейня", category: "Кофе", description: "", hours: "", phone: "", address: "" }
+      ]
     }
   };
+
+  // 2. ЗАГРУЗКА karta.svg. На узком экране карта поворачивается на 90° (вертикальная), на широком остаётся горизонтальной.
+  // Сам karta.svg менять не нужно: поворот делается скриптом.
+  const NS = "http://www.w3.org/2000/svg";
+  const mq = window.matchMedia('(max-width: 640px)');
+  let svgSource = '', isVertical = null;
 
   async function loadBoulevardMap() {
     const container = document.getElementById('svgContainer');
     try {
       const response = await fetch('karta.svg');
-      if (!response.ok) throw new Error('Файл karta.svg не найден');
-      const svgText = await response.text();
-      container.innerHTML = svgText;
-
-      const svgEl = container.querySelector('svg');
-      if (!svgEl) return;
-
-      Object.entries(buildingsData).forEach(([id, info]) => {
-        const buildingShape = svgEl.getElementById(id);
-        if (!buildingShape) {
-          console.warn(`Элемент с id="${id}" не найден в karta.svg`);
-          return;
-        }
-
-        buildingShape.classList.add('building-zone');
-        buildingShape.addEventListener('click', () => openBuilding(id));
-
-        addAutoLabel(svgEl, buildingShape, info.shortLabel);
-      });
+      if (!response.ok) throw new Error('karta.svg не найден');
+      svgSource = await response.text();
+      buildMap();
+      new ResizeObserver(() => {
+        if (!container.clientWidth) return; // карта скрыта (открыто здание)
+        if (mq.matches !== isVertical) buildMap(); else drawLabels();
+      }).observe(container);
     } catch (err) {
-      container.innerHTML = `<div style="padding: 32px; text-align: center; color: #D93025;">
-        Не удалось загрузить <b>karta.svg</b>. Убедитесь, что файл лежит в репозитории рядом с index.html.
-      </div>`;
+      container.innerHTML = '<div style="padding:32px;text-align:center;color:#D93025;">Не удалось загрузить <b>karta.svg</b>. Файл должен лежать рядом с index.html, страница должна открываться по http(s).</div>';
     }
   }
 
-  function addAutoLabel(svgEl, shape, text) {
-    const bbox = shape.getBBox();
-    const cx = bbox.x + bbox.width / 2;
-    const cy = bbox.y + bbox.height / 2;
-    const padX = 10;
-    const labelWidth = text.length * 7 + padX * 2;
-    const labelHeight = 22;
+  function buildMap() {
+    const container = document.getElementById('svgContainer');
+    isVertical = mq.matches;
+    container.innerHTML = svgSource;
+    container.classList.toggle('vertical', isVertical);
+    const svgEl = container.querySelector('svg');
+    if (!svgEl) return;
+    svgEl.removeAttribute('width');
+    svgEl.removeAttribute('height');
 
-    const ns = "http://www.w3.org/2000/svg";
-    const g = document.createElementNS(ns, "g");
+    if (isVertical) {
+      const { width: W, height: H } = svgEl.viewBox.baseVal;
+      const g = document.createElementNS(NS, 'g');
+      g.setAttribute('transform', `translate(${H} 0) rotate(90)`);
+      while (svgEl.firstChild) g.appendChild(svgEl.firstChild);
+      svgEl.appendChild(g);
+      svgEl.setAttribute('viewBox', `0 0 ${H} ${W}`);
+    }
 
-    const rect = document.createElementNS(ns, "rect");
-    rect.setAttribute("x", cx - labelWidth / 2);
-    rect.setAttribute("y", cy - labelHeight / 2);
-    rect.setAttribute("width", labelWidth);
-    rect.setAttribute("height", labelHeight);
-    rect.setAttribute("rx", 4);
-    rect.setAttribute("class", "svg-badge-bg");
-
-    const label = document.createElementNS(ns, "text");
-    label.setAttribute("x", cx);
-    label.setAttribute("y", cy);
-    label.setAttribute("class", "svg-badge-text");
-    label.textContent = text;
-
-    g.appendChild(rect);
-    g.appendChild(label);
-    svgEl.appendChild(g);
+    Object.keys(buildingsData).forEach(id => {
+      const shape = svgEl.getElementById(id);
+      if (!shape) { console.warn(`Элемент id="${id}" не найден в karta.svg`); return; }
+      shape.classList.add('building-zone');
+      shape.addEventListener('click', () => openBuilding(id));
+    });
+    drawLabels();
   }
 
+  // Плашки рисуются поверх карты, всегда горизонтально и одного размера на экране (~12px)
+  function drawLabels() {
+    const svgEl = document.querySelector('#svgContainer svg');
+    if (!svgEl) return;
+    const rect = svgEl.getBoundingClientRect();
+    if (!rect.width) return;
+    svgEl.querySelectorAll('.map-labels').forEach(n => n.remove());
+
+    const fs = 12 / (rect.width / svgEl.viewBox.baseVal.width); // размер шрифта в единицах viewBox
+    const inv = svgEl.getScreenCTM().inverse();
+    const layer = document.createElementNS(NS, 'g');
+    layer.setAttribute('class', 'map-labels');
+
+    Object.entries(buildingsData).forEach(([id, info]) => {
+      const shape = svgEl.getElementById(id);
+      if (!shape) return;
+      // центр здания с учётом его transform и поворота карты
+      const bb = shape.getBBox();
+      const M = inv.multiply(shape.getScreenCTM());
+      const pts = [[bb.x, bb.y], [bb.x + bb.width, bb.y], [bb.x, bb.y + bb.height], [bb.x + bb.width, bb.y + bb.height]]
+        .map(([x, y]) => new DOMPoint(x, y).matrixTransform(M));
+      const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+      const minY = Math.min(...ys), maxY = Math.max(...ys);
+      const w = info.shortLabel.length * fs * 0.62 + fs * 1.6, h = fs * 2.1;
+      // если плашка закрывает здание (оно низкое или маленькое), ставим её над зданием, чтобы мерцание было видно
+      const cy = h > (maxY - minY) * 0.8 ? minY - h / 2 - fs * 0.3 : (minY + maxY) / 2;
+      const c = { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: Math.max(h / 2, cy) };
+
+      const g = document.createElementNS(NS, 'g');
+      g.setAttribute('class', 'map-label');
+      g.addEventListener('click', () => openBuilding(id));
+      const bg = document.createElementNS(NS, 'rect');
+      [['x', c.x - w / 2], ['y', c.y - h / 2], ['width', w], ['height', h], ['rx', fs * 0.5], ['class', 'lbl-bg']]
+        .forEach(([k, v]) => bg.setAttribute(k, v));
+      const t = document.createElementNS(NS, 'text');
+      [['x', c.x], ['y', c.y], ['font-size', fs], ['class', 'lbl-text']].forEach(([k, v]) => t.setAttribute(k, v));
+      t.textContent = info.shortLabel;
+      g.append(bg, t);
+      layer.appendChild(g);
+    });
+    svgEl.appendChild(layer);
+  }
+
+  // Кнопки быстрого выбора под картой
   function renderBuildingChips() {
     const bar = document.getElementById('buildingsBar');
     Object.entries(buildingsData).forEach(([id, info]) => {
@@ -319,10 +293,12 @@
     });
   }
 
+  // 3. ПЕРЕХОД В ЗДАНИЕ
   function openBuilding(buildingId, highlightRoom = null, targetFloor = null) {
     const data = buildingsData[buildingId];
     if (!data) return;
 
+    if (document.getElementById('buildingView').style.display !== 'block') window.scrollTo(0, 0);
     document.getElementById('boulevardView').style.display = 'none';
     document.getElementById('buildingView').style.display = 'block';
     document.getElementById('searchResults').style.display = 'none';
@@ -330,6 +306,7 @@
     document.getElementById('selectedBuildingTitle').textContent = data.title;
     const activeFloor = targetFloor || data.floors[0];
 
+    // Вкладки этажей
     const tabsEl = document.getElementById('floorTabs');
     tabsEl.innerHTML = '';
     if (data.floors.length > 1) {
@@ -342,12 +319,19 @@
       });
     }
 
-    const fileName = data.svgFiles[activeFloor] || 'plan.svg';
-    document.getElementById('buildingPlanPlaceholder').innerHTML =
-      `Готово к подключению файла схемы: <b>${fileName}</b> (Этаж: ${activeFloor})`;
+    // Заглушка для файла этажа (подставим реальную загрузку SVG, когда подготовите файлы)
+    const planEl = document.getElementById('buildingPlanPlaceholder');
+    planEl.style.display = data.single ? 'none' : 'block';
+    if (!data.single) {
+      const fileName = data.svgFiles[activeFloor] || 'plan.svg';
+      planEl.innerHTML = `Готово к подключению файла схемы: <b>${fileName}</b> (Этаж: ${activeFloor})`;
+    }
+    document.getElementById('selectedBuildingSub').textContent = data.single ? 'Информация' : 'Схема помещений';
 
+    // Список арендаторов на выбранном этаже
     const listEl = document.getElementById('tenantList');
     listEl.innerHTML = '';
+    if (data.single) { renderInfoCard(listEl, data.tenants[0]); return; }
     const floorTenants = data.tenants.filter(t => t.floor === activeFloor);
 
     if (floorTenants.length === 0) {
@@ -357,10 +341,22 @@
         const row = document.createElement('div');
         row.className = 'tenant-row' + (t.room === highlightRoom ? ' target-tenant' : '');
         row.innerHTML = `<div><strong>${t.name}</strong><div style="font-size:12px; color:#818C99;">${t.category}</div></div>
-                         <span style="font-size:12px; font-weight:600;">${t.room}</span>`;
+                         ${data.single ? '' : `<span style="font-size:12px; font-weight:600;">${t.room}</span>`}`;
         listEl.appendChild(row);
       });
     }
+  }
+
+  // Карточка фирмы для зданий без планировки (single). Пустые поля не показываются.
+  function renderInfoCard(el, t) {
+    const rows = [
+      ['Описание', t.description],
+      ['Время работы', t.hours],
+      ['Телефон', t.phone && `<a href="tel:${t.phone.replace(/[^\d+]/g, '')}">${t.phone}</a>`],
+      ['Адрес', t.address]
+    ].filter(([, v]) => v);
+    el.innerHTML = `<div><div class="info-name">${t.name}</div><div class="info-cat">${t.category}</div>` +
+      rows.map(([k, v]) => `<div class="info-row"><span>${k}</span>${v}</div>`).join('') + '</div>';
   }
 
   function showBoulevard() {
@@ -368,6 +364,7 @@
     document.getElementById('boulevardView').style.display = 'block';
   }
 
+  // 4. ЖИВОЙ ПОИСК ПО ВСЕМ ЗДАНИЯМ БУЛЬВАРА
   const searchInput = document.getElementById('searchInput');
   const searchResults = document.getElementById('searchResults');
 
@@ -383,7 +380,7 @@
     Object.entries(buildingsData).forEach(([bId, bData]) => {
       bData.tenants.forEach(t => {
         if (t.name.toLowerCase().includes(q) || t.category.toLowerCase().includes(q)) {
-          matches.push({ bId, bTitle: bData.shortLabel, ...t });
+          matches.push({ bId, bTitle: bData.shortLabel, single: bData.single, ...t });
         }
       });
     });
@@ -395,7 +392,7 @@
         const div = document.createElement('div');
         div.className = 'search-item';
         div.innerHTML = `<span><strong>${m.name}</strong> <small style="color:#818C99;">(${m.category})</small></span>
-                         <span class="search-item-building">${m.bTitle} • ${m.floor} эт.</span>`;
+                         <span class="search-item-building">${m.bTitle}${m.single ? '' : ` • ${m.floor} эт.`}</span>`;
         div.onclick = () => openBuilding(m.bId, m.room, m.floor);
         searchResults.appendChild(div);
       });
